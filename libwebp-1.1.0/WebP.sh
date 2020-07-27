@@ -28,7 +28,7 @@ readonly OLDPATH=${PATH}
 # Add iPhoneOS-V6 to the list of platforms below if you need armv6 support.
 # Note that iPhoneOS-V6 support is not available with the iOS6 SDK.
 PLATFORMS="iPhoneSimulator iPhoneSimulator64"
-PLATFORMS+=" iPhoneOS-V7 iPhoneOS-V7s iPhoneOS-V7-arm64"
+PLATFORMS+=" iPhoneOS-V7 iPhoneOS-V7s iPhoneOS-V7-arm64 Catalyst"
 readonly PLATFORMS
 readonly SRCDIR=$(dirname $0)
 readonly TOPDIR=$(pwd)
@@ -69,18 +69,28 @@ for PLATFORM in ${PLATFORMS}; do
     PLATFORM="iPhoneOS"
     ARCH="aarch64"
     ARCH2="arm64"
+    TARGET="aarch64-apple-ios"
   elif [[ "${PLATFORM}" == "iPhoneOS-V7s" ]]; then
     PLATFORM="iPhoneOS"
     ARCH="armv7s"
+    TARGET="armv7s-apple-ios"
   elif [[ "${PLATFORM}" == "iPhoneOS-V7" ]]; then
     PLATFORM="iPhoneOS"
     ARCH="armv7"
+    TARGET="armv7-apple-ios"
   elif [[ "${PLATFORM}" == "iPhoneOS-V6" ]]; then
     PLATFORM="iPhoneOS"
     ARCH="armv6"
+    TARGET="armv6-apple-ios"
   elif [[ "${PLATFORM}" == "iPhoneSimulator64" ]]; then
     PLATFORM="iPhoneSimulator"
     ARCH="x86_64"
+    TARGET="x86_64-apple-ios13.0-macabi"
+  elif [[ "${PLATFORM}" == "Catalyst" ]]; then
+    PLATFORM="iPhoneOS"
+    ARCH="x86_64"
+    TARGET="x86_64-apple-ios13.0-macabi"
+
   else
     ARCH="i386"
   fi
@@ -92,7 +102,7 @@ for PLATFORM in ${PLATFORMS}; do
   SDKROOT="${PLATFORMSROOT}/"
   SDKROOT+="${PLATFORM}.platform/Developer/SDKs/${PLATFORM}${SDK}.sdk/"
   CFLAGS="-arch ${ARCH2:-${ARCH}} -pipe -isysroot ${SDKROOT} -O3 -DNDEBUG"
-  CFLAGS+=" -miphoneos-version-min=6.0 -fembed-bitcode"
+  CFLAGS+=" -miphoneos-version-min=6.0 -fembed-bitcode -target ${TARGET}"
 
   set -x
   export PATH="${DEVROOT}/usr/bin:${OLDPATH}"
