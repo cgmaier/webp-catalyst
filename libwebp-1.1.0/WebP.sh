@@ -17,9 +17,9 @@ readonly SDK=$(xcodebuild -showsdks \
   | grep iphoneos | sort | tail -n 1 | awk '{print substr($NF, 9)}'
 )
 
-# Extract the latest SDK version from the final field of the form: iphoneosX.Y
+# Extract the latest SDK version from the final field of the form: macosX.Y
 readonly MACSDK=$(xcodebuild -showsdks \
-  | grep macos | sort | tail -n 1 | awk '{print substr($NF, 9)}'
+  | grep macosx | sort | tail -n 1 | awk '{print substr($NF, 7)}'
 )
 
 # Extract Xcode version.
@@ -101,7 +101,7 @@ for PLATFORM in ${PLATFORMS}; do
   elif [[ "${PLATFORM}" == "Catalyst" ]]; then
     PLATFORM="MacOSX"
     ARCH="x86_64"
-    THESDK="10.15"
+    THESDK=${MACSDK}
     TARGET=" -target x86_64-apple-ios13.0-macabi"
   else
     THESDK=${SDK}
