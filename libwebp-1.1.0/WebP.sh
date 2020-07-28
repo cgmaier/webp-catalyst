@@ -16,6 +16,12 @@ set -e
 readonly SDK=$(xcodebuild -showsdks \
   | grep iphoneos | sort | tail -n 1 | awk '{print substr($NF, 9)}'
 )
+
+# Extract the latest SDK version from the final field of the form: iphoneosX.Y
+readonly MACSDK=$(xcodebuild -showsdks \
+  | grep macos | sort | tail -n 1 | awk '{print substr($NF, 9)}'
+)
+
 # Extract Xcode version.
 readonly XCODE=$(xcodebuild -version | grep Xcode | cut -d " " -f2)
 if [[ -z "${XCODE}" ]]; then
@@ -27,7 +33,8 @@ readonly OLDPATH=${PATH}
 
 # Add iPhoneOS-V6 to the list of platforms below if you need armv6 support.
 # Note that iPhoneOS-V6 support is not available with the iOS6 SDK.
-PLATFORMS="iPhoneSimulator iPhoneSimulator64"
+TARGET=""
+PLATFORMS="iPhoneSimulator"
 PLATFORMS+=" iPhoneOS-V7 iPhoneOS-V7s iPhoneOS-V7-arm64 Catalyst"
 readonly PLATFORMS
 readonly SRCDIR=$(dirname $0)
@@ -36,7 +43,7 @@ readonly BUILDDIR="${TOPDIR}/iosbuild"
 readonly TARGETDIR="${TOPDIR}/WebP.framework"
 readonly DEVELOPER=$(xcode-select --print-path)
 readonly PLATFORMSROOT="${DEVELOPER}/Platforms"
-readonly LIPO=$(xcrun -sdk iphoneos${SDK} -find lipo)
+readonly LIPO=$(xcrun -find lipo)
 LIBLIST=''
 
 if [[ -z "${SDK}" ]]; then
@@ -45,6 +52,7 @@ if [[ -z "${SDK}" ]]; then
 else
   echo "iOS SDK Version ${SDK}"
 fi
+
 
 rm -rf ${BUILDDIR}
 rm -rf ${TARGETDIR}
@@ -65,44 +73,49 @@ fi
 
 for PLATFORM in ${PLATFORMS}; do
   ARCH2=""
+  THESDK=""
+  TARGET=""
+  
   if [[ "${PLATFORM}" == "iPhoneOS-V7-arm64" ]]; then
     PLATFORM="iPhoneOS"
     ARCH="aarch64"
     ARCH2="arm64"
-    TARGET="aarch64-apple-ios"
+    THESDK=${SDK}
   elif [[ "${PLATFORM}" == "iPhoneOS-V7s" ]]; then
     PLATFORM="iPhoneOS"
     ARCH="armv7s"
-    TARGET="armv7s-apple-ios"
+    THESDK=${SDK}
   elif [[ "${PLATFORM}" == "iPhoneOS-V7" ]]; then
     PLATFORM="iPhoneOS"
     ARCH="armv7"
-    TARGET="armv7-apple-ios"
+    THESDK=${SDK}
   elif [[ "${PLATFORM}" == "iPhoneOS-V6" ]]; then
     PLATFORM="iPhoneOS"
     ARCH="armv6"
-    TARGET="armv6-apple-ios"
-  elif [[ "${PLATFORM}" == "iPhoneSimulator64" ]]; then
-    PLATFORM="iPhoneSimulator"
-    ARCH="x86_64"
-    TARGET="x86_64-apple-ios13.0-macabi"
+    THESDK=${SDK}
+  # elif [[ "${PLATFORM}" == "iPhoneSimulator64" ]]; then
+  #   PLATFORM="iPhoneSimulator"
+  #   ARCH="x86_64"
+  #   THESDK=${SDK}
+  #   TARGET=" -target x86_64-apple-ios13.0-macabi"
   elif [[ "${PLATFORM}" == "Catalyst" ]]; then
-    PLATFORM="iPhoneOS"
+    PLATFORM="MacOSX"
     ARCH="x86_64"
-    TARGET="x86_64-apple-ios13.0-macabi"
-
+    THESDK="10.15"
+    TARGET=" -target x86_64-apple-ios13.0-macabi"
   else
+    THESDK=${SDK}
     ARCH="i386"
   fi
 
-  ROOTDIR="${BUILDDIR}/${PLATFORM}-${SDK}-${ARCH}"
+  ROOTDIR="${BUILDDIR}/${PLATFORM}-${THESDK}-${ARCH}"
   mkdir -p "${ROOTDIR}"
 
   DEVROOT="${DEVELOPER}/Toolchains/XcodeDefault.xctoolchain"
   SDKROOT="${PLATFORMSROOT}/"
-  SDKROOT+="${PLATFORM}.platform/Developer/SDKs/${PLATFORM}${SDK}.sdk/"
+  SDKROOT+="${PLATFORM}.platform/Developer/SDKs/${PLATFORM}${THESDK}.sdk/"
   CFLAGS="-arch ${ARCH2:-${ARCH}} -pipe -isysroot ${SDKROOT} -O3 -DNDEBUG"
-  CFLAGS+=" -miphoneos-version-min=6.0 -fembed-bitcode -target ${TARGET}"
+  CFLAGS+=" -miphoneos-version-min=6.0 -fembed-bitcode${TARGET}"
 
   set -x
   export PATH="${DEVROOT}/usr/bin:${OLDPATH}"
@@ -114,6 +127,7 @@ for PLATFORM in ${PLATFORMS}; do
     --enable-swap-16bit-csp \
     CFLAGS="${CFLAGS}"
   set +x
+
 
   # run make only in the src/ directory to create libwebpdecoder.a
   cd src/
@@ -134,6 +148,7 @@ for PLATFORM in ${PLATFORMS}; do
   cd ..
 
   export PATH=${OLDPATH}
+  PLATFORM=""
 done
 
 cp -a ${SRCDIR}/src/webp/*.h ${TARGETDIR}/Headers/
